@@ -236,8 +236,9 @@ void RC_duty_task(u8 dT_ms)  //建议2ms调用一次
                              1500);  // 1100 -- 1900us,处理成大约+-500摇杆量
           //					if(i == CH_PIT)
           //					{
-          //						CH_N[i] = -1.2f *((s16)Rc_Pwm_In[i] -
-          //1500);
+          //						CH_N[i] = -1.2f
+          //*((s16)Rc_Pwm_In[i]
+          //- 1500);
           //					}
         } else {
           CH_N[i] = 0;
@@ -296,7 +297,7 @@ void fail_safe() {
   CH_N[CH_YAW] = 0;
 
   //切记不能给
-  //CH_N[AUX1]赋值，否则可能导致死循环。（根据AUX1特殊值判断接收机failsafe信号）
+  // CH_N[AUX1]赋值，否则可能导致死循环。（根据AUX1特殊值判断接收机failsafe信号）
 
   if (flag.unlock_sta) {
     if (switchs.gps_on == 0) {
