@@ -1,0 +1,15 @@
+build/
+.vscode/
+*.txt
+*.log
+*.bat
+*.ini
+*.bak
+*.uvguix.*
+*.bin
+*.ANO
+/*.*
+DebugConfig/
+doc/
+!ANO_Pioneer.uvprojx
+!.gitignore
