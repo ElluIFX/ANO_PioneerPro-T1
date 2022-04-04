@@ -22,6 +22,7 @@
 #define UN_ROL_VALUE 300
 
 static u8 RC_IN_MODE;
+char str_buf[36] = {0};
 void Remote_Control_Init() {
   //
   RC_IN_MODE = Ano_Parame.set.pwmInMode;
@@ -101,19 +102,10 @@ void unlock(u8 dT_ms) {
         ANO_DT_SendString("Unlock OK!");
 
       } else {
+        sprintf(str_buf,"Unlock ERR:%d",flag.unlock_err);
+        ANO_DT_SendString(str_buf);
         // reset
         flag.unlock_cmd = 0;
-        //
-        if (flag.unlock_err == 1) {
-          ANO_DT_SendString("Unlock Fail!");
-        } else if (flag.unlock_err == 2) {
-          ANO_DT_SendString("Unlock Fail!");
-        } else if (flag.unlock_err == 3) {
-          ANO_DT_SendString("Unlock Fail!");
-        } else if (flag.unlock_err == 4) {
-          ANO_DT_SendString("Power Low,Unlock Fail!");
-        } else {
-        }
       }
     } else {
     }
@@ -198,21 +190,24 @@ void unlock(u8 dT_ms) {
 
   if (mode_temp != mode_temp_pre && CH_N[AUX2] < 0) {
     flag.user_mode = mode_temp_pre;
-    // printf("%d\r\n",flag.user_mode);
+    sprintf(str_buf, "user_mode=%d", flag.user_mode);
+    ANO_DT_SendString(str_buf);
     switch (flag.user_mode) {
       case 1:
         user_cntrl_word.takeoff_en = 1;
-        //	printf("takeoffen\r\n");
+        ANO_DT_SendString("takeoffen");
         break;
       case 2:
         user_cntrl_word.land_en = 1;
+        ANO_DT_SendString("landen");
         break;
       case 3:
         user_cntrl_word.turn_left_en = 1;
-        //			printf("%d\r\n",flag.user_mode);
+        ANO_DT_SendString("turn_left_en");
         break;
       case 4:
         user_cntrl_word.turn_right_en = 1;
+        ANO_DT_SendString("turn_right_en");
         break;
       default:
         break;

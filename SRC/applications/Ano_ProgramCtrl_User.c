@@ -9,20 +9,31 @@
 #include "Drv_Led.h"
 #include "Drv_usart.h"
 
-#define USER_TASK_NUM 1  //用户任务数
+// #define USER_TASK_NUM 1  //用户任务数
 
 void UserCtrlReset(void);
 
 _pc_user_st pc_user;
+extern char str_buf[36];
 
 _user_cntrl_word user_cntrl_word;  //用户控制字
 
 /*-----------------------------------------------------------------------------*/
 //用户任务
 
-void empty_task(u32 dT_us) {
-  Program_Ctrl_User_Set_HXYcmps(0, 0);
-  Program_Ctrl_User_Set_YAWdps(0);
+void turn_at_45dps(u32 dT_us) {
+  Program_Ctrl_User_Set_YAWdps(45.0f);
+  Program_Ctrl_User_Set_Zcmps(0.0f);
+  Program_Ctrl_User_Set_HXYcmps(0.0f, 0.0f);
+  if (user_cntrl_word.mode == 2) {
+    user_cntrl_word.land_en = 1;
+  }
+}
+
+void forward_at_40cps(u32 dT_us) {
+  Program_Ctrl_User_Set_YAWdps(0.0f);
+  Program_Ctrl_User_Set_Zcmps(0.0f);
+  Program_Ctrl_User_Set_HXYcmps(40.0f, 0.0f);
   if (user_cntrl_word.mode == 2) {
     user_cntrl_word.land_en = 1;
   }
@@ -31,6 +42,7 @@ void empty_task(u32 dT_us) {
 void user_task_point_fix(u32 dT_us) {
   Program_Ctrl_User_Set_HXYcmps(0, 0);
   Program_Ctrl_User_Set_YAWdps(0);
+  Program_Ctrl_User_Set_Zcmps(0.0f);
   if (user_cntrl_word.mode == 1) {
     user_cntrl_word.break_out = 1;
   }
@@ -62,12 +74,15 @@ void user_task_5(u32 dT_us) {
 }
 
 /*------------------------------------------------------------------------------*/
-static user_task_t
-    user_task[USER_TASK_NUM] =  //用户任务列表（一键起飞后自动进行）
+static user_task_t user_task[] =  //用户任务列表（一键起飞后自动进行）
     {
-        {empty_task, 8000, 0, 0},  //
+        {user_task_point_fix, 3000, 0, 0}, {forward_at_40cps, 5000, 0, 0},
+        {user_task_point_fix, 1000, 0, 0}, {turn_at_45dps, 4000, 0, 0},
+        {user_task_point_fix, 1000, 0, 0}, {forward_at_40cps, 5000, 0, 0},
+        {user_task_point_fix, 3000, 0, 0}, {turn_at_45dps, 4000, 0, 0},
+        {user_task_point_fix, 3000, 0, 0},
 };
-
+const u8 USER_TASK_NUM = sizeof(user_task) / sizeof(user_task_t);
 //顺序执行用户任务
 static u8 task_index = 0;     //用于记录正在执行的任务
 static u32 running_time = 0;  //任务已运行时间
@@ -91,18 +106,22 @@ void User_Ctrl(u32 dT_ms) {
     UserCtrlReset();
     one_key_land();
     user_cntrl_word.land_en = 0;
-  }
-  // else if(flag.flying==1&&user_cntrl_word.user_task_running)
-  else if (user_cntrl_word.user_task_running) {
+  } else if (flag.auto_take_off_land == AUTO_TAKE_OFF_FINISH &&
+             user_cntrl_word.user_task_running) {
+    // else if (user_cntrl_word.user_task_running) {
     if (task_index < USER_TASK_NUM) {
       if (user_task[task_index].start_flag == 1)  //执行第task_index个任务
       {
+        // sprintf(str_buf, "task %d start", task_index);
+        // ANO_DT_SendString(str_buf);
         user_task[task_index].task_func(dT_ms);
         running_time += dT_ms;  //记录累计时间
       }
 
       if (user_task[task_index].end_flag == 1)  //准备开始下一个任务
       {
+        sprintf(str_buf, " > Task %d END", task_index);
+        ANO_DT_SendString(str_buf);
         task_index++;
         running_time = 0;
         FlyCtrlReset();
@@ -129,6 +148,7 @@ void User_Ctrl(u32 dT_ms) {
         user_task[task_index].end_flag = 1;
       }
     } else {
+      ANO_DT_SendString(" > All task finished!");
       user_cntrl_word.land_en = 1;
       user_cntrl_word.user_task_running = 0;
       UserCtrlReset();
