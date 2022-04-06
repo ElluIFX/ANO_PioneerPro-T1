@@ -123,6 +123,7 @@ static void Loop_50Hz(void)  // 20ms执行一次
   Loc_1level_Ctrl(20, CH_N);
   /*用户控制*/
   User_Ctrl(20);  //
+  AnoUserCtrl_Process();
 }
 
 static void Loop_20Hz(void)  // 50ms执行一次

@@ -21,34 +21,23 @@ _user_cntrl_word user_cntrl_word;  //用户控制字
 /*-----------------------------------------------------------------------------*/
 //用户任务
 
-void turn_at_45dps(u32 dT_us) {
-  Program_Ctrl_User_Set_YAWdps(45.0f);
-  Program_Ctrl_User_Set_Zcmps(0.0f);
-  Program_Ctrl_User_Set_HXYcmps(0.0f, 0.0f);
-  if (user_cntrl_word.mode == 2) {
-    user_cntrl_word.land_en = 1;
-  }
-}
-
-void forward_at_40cps(u32 dT_us) {
-  Program_Ctrl_User_Set_YAWdps(0.0f);
-  Program_Ctrl_User_Set_Zcmps(0.0f);
-  Program_Ctrl_User_Set_HXYcmps(40.0f, 0.0f);
-  if (user_cntrl_word.mode == 2) {
-    user_cntrl_word.land_en = 1;
-  }
-}
-
 void user_task_point_fix(u32 dT_us) {
   Program_Ctrl_User_Set_HXYcmps(0, 0);
   Program_Ctrl_User_Set_YAWdps(0);
   Program_Ctrl_User_Set_Zcmps(0.0f);
-  if (user_cntrl_word.mode == 1) {
-    user_cntrl_word.break_out = 1;
-  }
 }
 
-void horiz_stabelize(u32 dT_us) {}
+void user_task_remote_ctrl(u32 dT_us) {
+  if (user_cntrl_word.engage_hxy) {
+    Program_Ctrl_User_Set_HXYcmps(user_cntrl_word.hx, user_cntrl_word.hy);
+  }
+  if (user_cntrl_word.engage_yaw) {
+    Program_Ctrl_User_Set_YAWdps(user_cntrl_word.yaw);
+  }
+  if (user_cntrl_word.engage_z) {
+    Program_Ctrl_User_Set_Zcmps(user_cntrl_word.z);
+  }
+}
 
 void move_on(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(10, 0); }
 void move_back(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(-10, 0); }
@@ -57,30 +46,11 @@ void move_right(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(0, -10); }
 void turn_left(u32 dT_us) { Program_Ctrl_User_Set_YAWdps(-15 / 2.0f); }
 void turn_right(u32 dT_us) { Program_Ctrl_User_Set_YAWdps(45 / 2.0f); }
 
-void user_task_2(u32 dT_us) {}
-
-void user_task_to_barcode(u32 dT_us) {}
-
-void user_task_to_pole(u32 dT_us) {}
-
-void user_task_take_photo(u32 dT_us) {}
-
-void user_task_5(u32 dT_us) {
-  if (user_cntrl_word.mode == 3) {
-    Program_Ctrl_User_Set_HXYcmps(-10, 0);
-  } else {
-    user_cntrl_word.break_out = 1;
-  }
-}
-
 /*------------------------------------------------------------------------------*/
 static user_task_t user_task[] =  //用户任务列表（一键起飞后自动进行）
     {
-        {user_task_point_fix, 3000, 0, 0}, {forward_at_40cps, 5000, 0, 0},
-        {user_task_point_fix, 1000, 0, 0}, {turn_at_45dps, 4000, 0, 0},
-        {user_task_point_fix, 1000, 0, 0}, {forward_at_40cps, 5000, 0, 0},
-        {user_task_point_fix, 3000, 0, 0}, {turn_at_45dps, 4000, 0, 0},
-        {user_task_point_fix, 3000, 0, 0},
+        {user_task_point_fix, 5000, 0, 0},
+        {user_task_remote_ctrl, 1800000, 0, 0},
 };
 const u8 USER_TASK_NUM = sizeof(user_task) / sizeof(user_task_t);
 //顺序执行用户任务
@@ -89,7 +59,6 @@ static u32 running_time = 0;  //任务已运行时间
 
 void User_Ctrl(u32 dT_ms) {
   if (user_cntrl_word.takeoff_en == 1 && switchs.of_flow_on) {
-    //		printf("take off\r\n");
     FlyCtrlReset();
     one_key_take_off();
     user_cntrl_word.takeoff_en = 0;
@@ -97,6 +66,14 @@ void User_Ctrl(u32 dT_ms) {
     user_cntrl_word.break_out = 0;  //为任务的跳出做准备
     task_index = 0;
     running_time = 0;  //任务已运行时间
+
+    user_cntrl_word.engage_hxy = 0;
+    user_cntrl_word.engage_yaw = 0;
+    user_cntrl_word.engage_z = 0;
+    user_cntrl_word.hx = 0;
+    user_cntrl_word.hy = 0;
+    user_cntrl_word.yaw = 0;
+    user_cntrl_word.z = 0;
 
     for (int i = 0; i < USER_TASK_NUM; i++) {
       user_task[i].end_flag = 0;  //清空所有任务结束标志位
@@ -106,14 +83,13 @@ void User_Ctrl(u32 dT_ms) {
     UserCtrlReset();
     one_key_land();
     user_cntrl_word.land_en = 0;
+    user_cntrl_word.user_task_running = 0;  //终止任务
   } else if (flag.auto_take_off_land == AUTO_TAKE_OFF_FINISH &&
              user_cntrl_word.user_task_running) {
     // else if (user_cntrl_word.user_task_running) {
     if (task_index < USER_TASK_NUM) {
       if (user_task[task_index].start_flag == 1)  //执行第task_index个任务
       {
-        // sprintf(str_buf, "task %d start", task_index);
-        // ANO_DT_SendString(str_buf);
         user_task[task_index].task_func(dT_ms);
         running_time += dT_ms;  //记录累计时间
       }
@@ -139,8 +115,6 @@ void User_Ctrl(u32 dT_ms) {
       if (running_time == 0)  //启动第task_index个任务
       {
         user_task[task_index].start_flag = 1;
-        //							 printf("user
-        // task<%d> start!\r\n",task_index);
       } else if (running_time >=
                  user_task[task_index].run_time)  //判断当前任务是否完成
       {
@@ -155,7 +129,6 @@ void User_Ctrl(u32 dT_ms) {
       FlyCtrlReset();
       task_index = 0;
       running_time = 0;
-      //			printf("UserCtrlReset\r\n");
     }
   }
 }
@@ -214,4 +187,61 @@ void UserCtrlReset() {
   Program_Ctrl_User_Set_HXYcmps(0, 0);
   Program_Ctrl_User_Set_YAWdps(0);
   Program_Ctrl_User_Set_Zcmps(0);
+}
+
+static uint8_t _user_data_temp[50];
+static u8 _user_data_cnt = 0;
+static u8 user_ctrl_data_ok = 0;
+
+/**
+ * @brief 外部MCU用户控制命令接收函数,在串口中断中调用
+ * @param  data
+ */
+void AnoUserCtrl_GetOneByte(uint8_t data) {
+  static u8 _data_len = 0;
+  static u8 state = 0;
+
+  if (state == 0 && data == 0xAA) {
+    state = 1;
+    _user_data_temp[0] = data;
+  } else if (state == 1 && data == 0x22) {
+    state = 2;
+    _user_data_temp[1] = data;
+    user_ctrl_data_ok = 0;
+  } else if (state == 2)  //功能字
+  {
+    state = 3;
+    _user_data_temp[2] = data;
+  } else if (state == 3)  //长度
+  {
+    state = 4;
+    _user_data_temp[3] = data;
+    _data_len = data;
+    _user_data_cnt = 0;
+    if (_data_len == 1) state = 5;
+  } else if (state == 4 && _data_len > 0) {
+    _data_len--;
+    _user_data_temp[4 + _user_data_cnt++] = data;
+    if (_data_len == 1) state = 5;
+  } else if (state == 5) {
+    state = 0;
+    _user_data_temp[4 + _user_data_cnt] = data;
+    _user_data_temp[5 + _user_data_cnt] = 0;
+    user_ctrl_data_ok = 1;
+  } else
+    state = 0;
+}
+
+void AnoUserCtrl_Process(void) {
+  static u8 option;
+  static u8 len;
+  static uint8_t* p_data = (uint8_t*)(_user_data_temp + 4);
+  if (user_ctrl_data_ok) {
+    user_ctrl_data_ok = 0;
+    ANO_DT_SendString("RECIVED COMMAND");
+    option = _user_data_temp[2];
+    len = _user_data_temp[3];
+    sprintf(str_buf, "option:%d,len:%d,unicode:%s", option, len, p_data);
+    ANO_DT_SendString(str_buf);
+  }
 }
