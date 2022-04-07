@@ -22,7 +22,6 @@
 #define UN_ROL_VALUE 300
 
 static u8 RC_IN_MODE;
-char str_buf[36] = {0};
 void Remote_Control_Init() {
   //
   RC_IN_MODE = Ano_Parame.set.pwmInMode;
@@ -102,8 +101,7 @@ void unlock(u8 dT_ms) {
         ANO_DT_SendString("Unlock OK!");
 
       } else {
-        sprintf(str_buf,"Unlock ERR:%d",flag.unlock_err);
-        ANO_DT_SendString(str_buf);
+        DTprintf("Unlock ERR:%d", flag.unlock_err);
         // reset
         flag.unlock_cmd = 0;
       }
@@ -190,8 +188,7 @@ void unlock(u8 dT_ms) {
 
   if (mode_temp != mode_temp_pre && CH_N[AUX2] < 0) {
     flag.user_mode = mode_temp_pre;
-    sprintf(str_buf, "user_mode=%d", flag.user_mode);
-    ANO_DT_SendString(str_buf);
+    DTprintf("user_mode=%d", flag.user_mode);
     switch (flag.user_mode) {
       case 1:
         user_cntrl_word.takeoff_en = 1;

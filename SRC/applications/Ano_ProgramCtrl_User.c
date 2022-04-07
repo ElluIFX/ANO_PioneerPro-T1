@@ -14,7 +14,6 @@
 void UserCtrlReset(void);
 
 _pc_user_st pc_user;
-extern char str_buf[36];
 
 _user_cntrl_word user_cntrl_word;  //用户控制字
 
@@ -96,8 +95,7 @@ void User_Ctrl(u32 dT_ms) {
 
       if (user_task[task_index].end_flag == 1)  //准备开始下一个任务
       {
-        sprintf(str_buf, " > Task %d END", task_index);
-        ANO_DT_SendString(str_buf);
+        DTprintf(" > Task %d END", task_index);
         task_index++;
         running_time = 0;
         FlyCtrlReset();
@@ -232,7 +230,7 @@ void AnoUserCtrl_GetOneByte(uint8_t data) {
     state = 0;
 }
 
-void AnoUserCtrl_Process(void) {
+void AnoUserCtrl_Process(void) {  
   static u8 option;
   static u8 len;
   static uint8_t* p_data = (uint8_t*)(_user_data_temp + 4);
@@ -241,7 +239,6 @@ void AnoUserCtrl_Process(void) {
     ANO_DT_SendString("RECIVED COMMAND");
     option = _user_data_temp[2];
     len = _user_data_temp[3];
-    sprintf(str_buf, "option:%d,len:%d,unicode:%s", option, len, p_data);
-    ANO_DT_SendString(str_buf);
+    DTprintf("option:%d,len:%d,unicode:%s", option, len, p_data);
   }
 }

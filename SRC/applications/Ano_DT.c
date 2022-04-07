@@ -989,4 +989,18 @@ void ANO_DT_Send_User() {
   ANO_DT_Send_Data(data_to_send, _cnt);
 }
 
+#include <stdarg.h>
+
+static char str_buf[50] = {0};
+
+int DTprintf(const char *fmt, ...) {
+  va_list ap;
+  int n = 0;
+  va_start(ap, fmt);
+  n = vsnprintf(str_buf, 50, fmt, ap);
+  va_end(ap);
+  ANO_DT_SendString(str_buf);
+  return n;
+}
+
 /******************* (C) COPYRIGHT 2014 ANO TECH *****END OF FILE************/

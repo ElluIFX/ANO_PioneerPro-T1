@@ -127,5 +127,6 @@ void ANO_DT_SendCmd(u8 dest, u8 fun, u16 cmd1, u16 cmd2, u16 cmd3, u16 cmd4,
                     u16 cmd5);
 void ANO_DT_SendString(const char *str);
 void ANO_DT_SendStrVal(const char *str, s32 val);
+int DTprintf(const char *fmt, ...);
 
 #endif
