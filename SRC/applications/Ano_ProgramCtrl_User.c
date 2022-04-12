@@ -230,15 +230,30 @@ void AnoUserCtrl_GetOneByte(uint8_t data) {
     state = 0;
 }
 
-void AnoUserCtrl_Process(void) {  
+extern u8 send_user_data_flag;
+
+void AnoUserCtrl_Process(void) {
   static u8 option;
   static u8 len;
+  static u8 connected = 0;
   static uint8_t* p_data = (uint8_t*)(_user_data_temp + 4);
   if (user_ctrl_data_ok) {
     user_ctrl_data_ok = 0;
-    ANO_DT_SendString("RECIVED COMMAND");
     option = _user_data_temp[2];
     len = _user_data_temp[3];
-    DTprintf("option:%d,len:%d,unicode:%s", option, len, p_data);
+    DTprintf("R: option:%d,len:%d,unicode:%s", option, len, p_data);
+    switch (option) {
+      case 0x00:  // Œ’ ÷
+        if (p_data[0] == 0x01) {
+          connected = 1;
+          send_user_data_flag = 1;
+          DTprintf("Ctrl Connected");
+          break;
+        }
+      case 0x01:
+      case 0x02:
+      default:
+        break;
+    }
   }
 }

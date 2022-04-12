@@ -173,6 +173,11 @@ void unlock(u8 dT_ms) {
   static u8 AUX2_Toggle, mode_temp = 0, mode_temp_pre;
 
   time_now = SysTick_GetTick();
+
+  if (CH_N[AUX4] > 0) {
+    flag.unlock_cmd = 0;  // 紧急锁浆
+  }
+
   if (CH_N[AUX2] > 0 && AUX2_Toggle) {
     AUX2_Toggle = 0;
     mode_temp++;
