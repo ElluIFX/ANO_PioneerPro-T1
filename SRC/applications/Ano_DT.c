@@ -66,7 +66,7 @@ void ANO_DT_Data_Exchange(void) {
   static u16 cnt = 0;
   static u16 senser_cnt = 10;
   static u16 senser2_cnt = 50;
-  static u16 senserSta_cnt = 1000;
+  static u16 senserSta_cnt = 500;
   static u16 user_cnt = 40;
   static u16 status_cnt = 15;
   static u16 rcdata_cnt = 20;
@@ -110,7 +110,7 @@ void ANO_DT_Data_Exchange(void) {
   else if (f.send_status) {
     f.send_status = 0;
     ANO_DT_Send_Status(imu_data.rol, imu_data.pit, imu_data.yaw,
-                       wcz_hei_fus.out, 0, flag.unlock_sta);
+                       wcz_hei_fus.out, flag.flight_mode, flag.unlock_sta);
   }
   ///////////////////////////////////////////////////////////////////////////////////////
   else if (f.send_speed) {
@@ -691,7 +691,7 @@ void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw,
 
   data_to_send[_cnt++] = fly_model;
 
-  data_to_send[_cnt++] = armed;
+  data_to_send[_cnt++] = armed > 0 ? 0x01 : 0x00;
 
   data_to_send[4] = _cnt - 5;
 
