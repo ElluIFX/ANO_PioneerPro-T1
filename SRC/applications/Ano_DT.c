@@ -66,6 +66,7 @@ void ANO_DT_Data_Exchange(void) {
   static u16 cnt = 0;
   static u16 senser_cnt = 10;
   static u16 senser2_cnt = 50;
+  static u16 senserSta_cnt = 1000;
   static u16 user_cnt = 40;
   static u16 status_cnt = 15;
   static u16 rcdata_cnt = 20;
@@ -77,6 +78,8 @@ void ANO_DT_Data_Exchange(void) {
   if ((cnt % senser_cnt) == (senser_cnt - 1)) f.send_senser = 1;
 
   if ((cnt % senser2_cnt) == (senser2_cnt - 1)) f.send_senser2 = 1;
+
+  if ((cnt % senserSta_cnt) == (senserSta_cnt - 1)) f.send_senserSta = 1;
 
   if ((cnt % user_cnt) == (user_cnt - 1)) f.send_user = 1;
 
@@ -132,6 +135,12 @@ void ANO_DT_Data_Exchange(void) {
     f.send_senser2 = 0;
     ANO_DT_Send_Senser2(baro_height, ref_tof_height,
                         sensor.Tempreature_C * 10);  //原始数据
+  }
+  /////////////////////////////////////////////////////////////////////////////////////
+  else if (f.send_senserSta) {
+    f.send_senserSta = 0;
+    ANO_DT_Send_SenserSta(sens_hd_check.of_ok, sens_hd_check.gps_ok, 0x00, 0x00,
+                          sens_hd_check.tof_ok);
   }
   /////////////////////////////////////////////////////////////////////////////////////
   else if (f.send_rcdata) {
@@ -771,6 +780,32 @@ void ANO_DT_Send_Senser2(s32 bar_alt, s32 csb_alt, s16 sensertmp) {
 
   ANO_DT_Send_Data(data_to_send, _cnt);
 }
+
+void ANO_DT_Send_SenserSta(u8 of_sta, u8 gps_sta, u8 omv_sta, u8 uwb_sta,
+                           u8 alt_sta) {
+  u8 _cnt = 0;
+
+  data_to_send[_cnt++] = 0xAA;
+  data_to_send[_cnt++] = MYHWADDR;
+  data_to_send[_cnt++] = SWJADDR;
+  data_to_send[_cnt++] = 0x08;
+  data_to_send[_cnt++] = 0;
+
+  data_to_send[_cnt++] = of_sta;
+  data_to_send[_cnt++] = gps_sta;
+  data_to_send[_cnt++] = omv_sta;
+  data_to_send[_cnt++] = uwb_sta;
+  data_to_send[_cnt++] = alt_sta;
+
+  data_to_send[4] = _cnt - 5;
+
+  u8 sum = 0;
+  for (u8 i = 0; i < _cnt; i++) sum += data_to_send[i];
+  data_to_send[_cnt++] = sum;
+
+  ANO_DT_Send_Data(data_to_send, _cnt);
+}
+
 void ANO_DT_Send_RCData(u16 thr, u16 yaw, u16 rol, u16 pit, u16 aux1, u16 aux2,
                         u16 aux3, u16 aux4, u16 aux5, u16 aux6) {
   u8 _cnt = 0;
@@ -1025,16 +1060,16 @@ void ANO_User_Recall_Data(void) {
   vs16 _temp;
   vs32 _temp2;
 
-  // 起飞状态, 高度稳定, 位置稳定, 高度,
+  //  解锁状态, 起飞状态, 高度稳定, 高度,
   // 航向, x速度, y速度, z速度, 角速度
 
   data_to_send[_cnt++] = 0xAA;  // head
   data_to_send[_cnt++] = 0x55;  // head
   data_to_send[_cnt++] = 0;     // length
 
+  data_to_send[_cnt++] = flag.unlock_sta;
   data_to_send[_cnt++] = flag.flying;
   data_to_send[_cnt++] = flag.ct_alt_hold;
-  data_to_send[_cnt++] = flag.ct_loc_hold;
 
   _temp2 = wcz_hei_fus.out * 1000;
   data_to_send[_cnt++] = BYTE3(_temp2);
