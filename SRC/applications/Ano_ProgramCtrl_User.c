@@ -214,16 +214,16 @@ void AnoUserCtrl_GetOneByte(uint8_t data) {
   {
     state = 4;
     _user_data_temp[3] = data;
-    _data_len = data;
+    _data_len = data;  //数据长度
     _user_data_cnt = 0;
-    if (_data_len == 1) state = 5;
+    // if (_data_len == 1) state = 5;
   } else if (state == 4 && _data_len > 0) {
     _data_len--;
-    _user_data_temp[4 + _user_data_cnt++] = data;
-    if (_data_len == 1) state = 5;
+    _user_data_temp[4 + _user_data_cnt++] = data;  //数据
+    if (_data_len == 0) state = 5;
   } else if (state == 5) {
     state = 0;
-    _user_data_temp[4 + _user_data_cnt] = data;
+    _user_data_temp[4 + _user_data_cnt] = data;  // check sum
     _user_data_temp[5 + _user_data_cnt] = 0;
     user_ctrl_data_ok = 1;
   } else
@@ -234,14 +234,28 @@ extern u8 send_user_data_flag;
 
 void AnoUserCtrl_Process(void) {
   static u8 option;
+  static u8 sub_option;
+  static u8 recv_check;
+  static u8 calc_check;
   static u8 len;
   static u8 connected = 0;
   static uint8_t* p_data = (uint8_t*)(_user_data_temp + 4);
+  static float val1, val2, val3;
+  static int16_t temp_s16;
   if (user_ctrl_data_ok) {
     user_ctrl_data_ok = 0;
     option = _user_data_temp[2];
     len = _user_data_temp[3];
-    DTprintf("R: option:%d,len:%d,unicode:%s", option, len, p_data);
+    recv_check = _user_data_temp[4 + len];
+    calc_check = 0;
+    for (u8 i = 0; i < len + 4; i++) {
+      calc_check += _user_data_temp[i];
+    }
+    // DTprintf("R: option:%d,len:%d,unicode:%s", option, len, p_data);
+    if (calc_check != recv_check) {
+      DTprintf("R: checksum error");
+      return;
+    }
     switch (option) {
       case 0x00:  // 握手
         if (p_data[0] == 0x01) {
@@ -250,8 +264,37 @@ void AnoUserCtrl_Process(void) {
           DTprintf("Ctrl Connected");
           break;
         }
-      case 0x01:
-      case 0x02:
+      case 0x01:  // 流程控制
+        if (p_data[0] == 0x10) {
+          FlyCtrlDataAnl(p_data);
+        }
+        break;
+      case 0x02:  // 实时控制
+        sub_option = p_data[0];
+        temp_s16 = p_data[1] << 8 | p_data[2];
+        val1 = temp_s16 / 100.0f;
+        temp_s16 = p_data[3] << 8 | p_data[4];
+        val2 = temp_s16 / 100.0f;
+        // DTprintf("R: sub_option:%d,val1:%f,val2:%f", sub_option, val1, val2);
+        switch (sub_option) {
+          case 0x01:
+            Program_Ctrl_User_Set_HXYcmps(val1, val2);
+            break;
+          case 0x02:
+            Program_Ctrl_User_Set_Zcmps(val1);
+            break;
+          case 0x03:
+            Program_Ctrl_User_Set_YAWdps(val1);
+            break;
+          case 0x04:
+            Program_Ctrl_User_Set_HXYcmps(0, 0);
+            Program_Ctrl_User_Set_Zcmps(0);
+            Program_Ctrl_User_Set_YAWdps(0);
+            break;
+          default:
+            break;
+        }
+        break;
       default:
         break;
     }
