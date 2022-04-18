@@ -8,6 +8,7 @@
 #define MAX_PC_XYVEL_CMPS 200
 #define MAX_PC_ZVEL_CMPS 150
 #define MAX_PC_PAL_DPS 100
+#define MAX_PC_HEIGHT 300
 
 void Program_Ctrl_User_Set_HXYcmps(float hx_vel_cmps, float hy_vel_cmps);
 void Program_Ctrl_User_Set_YAWdps(float yaw_pal_dps);
@@ -24,6 +25,9 @@ typedef struct {
   //
   float vel_cmps_set_z;
   float pal_dps_set;
+  //
+  u8 engage_height_set;
+  float height_set;
 } _pc_user_st;
 extern _pc_user_st pc_user;
 

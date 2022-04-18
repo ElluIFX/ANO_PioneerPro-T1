@@ -163,6 +163,20 @@ void Program_Ctrl_User_Set_YAWdps(float yaw_pal_dps) {
       LIMIT(pc_user.pal_dps_set, -MAX_PC_PAL_DPS, MAX_PC_PAL_DPS);
 }
 
+/**********************************************************************************************************
+ *函 数 名: Program_Ctrl_User_Set_ZHeight
+ *功能说明: 程控功能，定高高度设定
+ *形    参: 高度（厘米）
+ *返 回 值: 无
+ **********************************************************************************************************/
+void Program_Ctrl_User_Set_ZHeight(float z_height) {
+  //
+  pc_user.height_set = z_height;
+  //限幅
+  pc_user.height_set = LIMIT(pc_user.height_set, 10, MAX_PC_HEIGHT);
+  pc_user.engage_height_set = 1;
+}
+
 void UserCtrlReset() {
   Program_Ctrl_User_Set_HXYcmps(0, 0);
   Program_Ctrl_User_Set_YAWdps(0);
@@ -269,6 +283,9 @@ void AnoUserCtrl_Process(void) {
             Program_Ctrl_User_Set_YAWdps(val1);
             break;
           case 0x04:
+            Program_Ctrl_User_Set_ZHeight(val1);
+            break;
+          case 0x05:
             Program_Ctrl_User_Set_HXYcmps(0, 0);
             Program_Ctrl_User_Set_Zcmps(0);
             Program_Ctrl_User_Set_YAWdps(0);
