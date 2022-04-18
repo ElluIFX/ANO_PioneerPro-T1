@@ -7,6 +7,7 @@
 #include "Ano_DT.h"
 
 #include "ANO_IMU.h"
+#include "Ano_AttCtrl.h"
 #include "Ano_FlightCtrl.h"
 #include "Ano_FlightDataCal.h"
 #include "Ano_FlyCtrl.h"
@@ -39,17 +40,22 @@ s32 ParValList[100];  //参数列表
 dt_flag_t f;          //需要发送数据的标志
 u8 data_to_send[50];  //发送数据缓存
 u8 checkdata_to_send, checksum_to_send;
+u8 send_user_data_flag = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////
 // Send_Data函数是协议中所有发送数据功能使用到的发送函数
 //移植时，用户应根据自身应用的情况，根据使用的通信方式，实现此函数
 void ANO_DT_Send_Data(u8 *dataToSend, u8 length) {
-#ifdef ANO_DT_USE_USB _HID
+#ifdef ANO_DT_USE_USB_HID
   Usb_Hid_Adddata(data_to_send, length);
 #endif
 #ifdef ANO_DT_USE_USART2
   Usart2_Send(data_to_send, length);
 #endif
+}
+
+void ANO_User_Send_Data(u8 *dataToSend, u8 length) {
+  Uart5_Send(dataToSend, length);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -60,19 +66,22 @@ void ANO_DT_Data_Exchange(void) {
   static u16 cnt = 0;
   static u16 senser_cnt = 10;
   static u16 senser2_cnt = 50;
-  static u16 user_cnt = 10;
+  static u16 senserSta_cnt = 500;
+  static u16 user_cnt = 40;
   static u16 status_cnt = 15;
   static u16 rcdata_cnt = 20;
   static u16 motopwm_cnt = 20;
   static u16 power_cnt = 50;
   static u16 speed_cnt = 50;
-  static u16 location_cnt = 500;
+  static u16 location_cnt = 1000;
 
   if ((cnt % senser_cnt) == (senser_cnt - 1)) f.send_senser = 1;
 
   if ((cnt % senser2_cnt) == (senser2_cnt - 1)) f.send_senser2 = 1;
 
-  if ((cnt % user_cnt) == (user_cnt - 2)) f.send_user = 1;
+  if ((cnt % senserSta_cnt) == (senserSta_cnt - 1)) f.send_senserSta = 1;
+
+  if ((cnt % user_cnt) == (user_cnt - 1)) f.send_user = 1;
 
   if ((cnt % status_cnt) == (status_cnt - 1)) f.send_status = 1;
 
@@ -84,7 +93,7 @@ void ANO_DT_Data_Exchange(void) {
 
   if ((cnt % speed_cnt) == (speed_cnt - 3)) f.send_speed = 1;
 
-  if ((cnt % location_cnt) == (location_cnt - 3)) {
+  if ((cnt % location_cnt) == (location_cnt - 1)) {
     f.send_location = 1;
   }
 
@@ -101,7 +110,7 @@ void ANO_DT_Data_Exchange(void) {
   else if (f.send_status) {
     f.send_status = 0;
     ANO_DT_Send_Status(imu_data.rol, imu_data.pit, imu_data.yaw,
-                       wcz_hei_fus.out, 0, flag.unlock_sta);
+                       wcz_hei_fus.out, flag.flight_mode, flag.unlock_sta);
   }
   ///////////////////////////////////////////////////////////////////////////////////////
   else if (f.send_speed) {
@@ -109,9 +118,10 @@ void ANO_DT_Data_Exchange(void) {
     ANO_DT_Send_Speed(loc_ctrl_1.fb[Y], loc_ctrl_1.fb[X], loc_ctrl_1.fb[Z]);
   }
   ///////////////////////////////////////////////////////////////////////////////////////
-  else if (f.send_user) {
+  else if (f.send_user && send_user_data_flag) {
     f.send_user = 0;
-    ANO_DT_Send_User();
+    // ANO_DT_Send_User();
+    ANO_User_Recall_Data();
   }
   ///////////////////////////////////////////////////////////////////////////////////////
   else if (f.send_senser) {
@@ -125,6 +135,12 @@ void ANO_DT_Data_Exchange(void) {
     f.send_senser2 = 0;
     ANO_DT_Send_Senser2(baro_height, ref_tof_height,
                         sensor.Tempreature_C * 10);  //原始数据
+  }
+  /////////////////////////////////////////////////////////////////////////////////////
+  else if (f.send_senserSta) {
+    f.send_senserSta = 0;
+    ANO_DT_Send_SenserSta(sens_hd_check.of_ok, sens_hd_check.gps_ok, 0x00, 0x00,
+                          sens_hd_check.tof_ok);
   }
   /////////////////////////////////////////////////////////////////////////////////////
   else if (f.send_rcdata) {
@@ -311,7 +327,7 @@ void ANO_DT_Data_Receive_Anl(u8 *data_buf, u8 num) {
 void ANO_DT_SendCmd(u8 dest, u8 fun, u16 cmd1, u16 cmd2, u16 cmd3, u16 cmd4,
                     u16 cmd5) {
   u8 _cnt = 0;
-  data_to_send[_cnt++] = 0xAA;
+  static u8 data_to_send[60] = {0};
   data_to_send[_cnt++] = MYHWADDR;
   data_to_send[_cnt++] = dest;
   data_to_send[_cnt++] = 0xE0;
@@ -675,7 +691,7 @@ void ANO_DT_Send_Status(float angle_rol, float angle_pit, float angle_yaw,
 
   data_to_send[_cnt++] = fly_model;
 
-  data_to_send[_cnt++] = armed;
+  data_to_send[_cnt++] = armed > 0 ? 0x01 : 0x00;
 
   data_to_send[4] = _cnt - 5;
 
@@ -764,6 +780,32 @@ void ANO_DT_Send_Senser2(s32 bar_alt, s32 csb_alt, s16 sensertmp) {
 
   ANO_DT_Send_Data(data_to_send, _cnt);
 }
+
+void ANO_DT_Send_SenserSta(u8 of_sta, u8 gps_sta, u8 omv_sta, u8 uwb_sta,
+                           u8 alt_sta) {
+  u8 _cnt = 0;
+
+  data_to_send[_cnt++] = 0xAA;
+  data_to_send[_cnt++] = MYHWADDR;
+  data_to_send[_cnt++] = SWJADDR;
+  data_to_send[_cnt++] = 0x08;
+  data_to_send[_cnt++] = 0;
+
+  data_to_send[_cnt++] = of_sta;
+  data_to_send[_cnt++] = gps_sta;
+  data_to_send[_cnt++] = omv_sta;
+  data_to_send[_cnt++] = uwb_sta;
+  data_to_send[_cnt++] = alt_sta;
+
+  data_to_send[4] = _cnt - 5;
+
+  u8 sum = 0;
+  for (u8 i = 0; i < _cnt; i++) sum += data_to_send[i];
+  data_to_send[_cnt++] = sum;
+
+  ANO_DT_Send_Data(data_to_send, _cnt);
+}
+
 void ANO_DT_Send_RCData(u16 thr, u16 yaw, u16 rol, u16 pit, u16 aux1, u16 aux2,
                         u16 aux3, u16 aux4, u16 aux5, u16 aux6) {
   u8 _cnt = 0;
@@ -987,6 +1029,82 @@ void ANO_DT_Send_User() {
   data_to_send[_cnt++] = sum;
 
   ANO_DT_Send_Data(data_to_send, _cnt);
+}
+
+#include <stdarg.h>
+
+static char str_buf[50] = {0};
+
+int DTprintf(const char *fmt, ...) {
+  va_list ap;
+  int n = 0;
+  va_start(ap, fmt);
+  n = vsnprintf(str_buf, 50, fmt, ap);
+  va_end(ap);
+  ANO_DT_SendString((const char *)str_buf);
+  return n;
+}
+
+int Uprintf(const char *fmt, ...) {
+  va_list ap;
+  int n = 0;
+  va_start(ap, fmt);
+  n = vsnprintf(str_buf, 50, fmt, ap);
+  va_end(ap);
+  ANO_User_Send_Data((u8 *)str_buf, n);
+  return n;
+}
+
+void ANO_User_Recall_Data(void) {
+  u8 _cnt = 0;
+  vs16 _temp;
+  vs32 _temp2;
+
+  //  解锁状态, 起飞状态, 高度稳定, 高度,
+  // 航向, x速度, y速度, z速度, 角速度
+
+  data_to_send[_cnt++] = 0xAA;  // head
+  data_to_send[_cnt++] = 0x55;  // head
+  data_to_send[_cnt++] = 0;     // length
+
+  data_to_send[_cnt++] = flag.unlock_sta;
+  data_to_send[_cnt++] = flag.flying;
+  data_to_send[_cnt++] = flag.ct_alt_hold;
+
+  _temp2 = wcz_hei_fus.out * 1000;
+  data_to_send[_cnt++] = BYTE3(_temp2);
+  data_to_send[_cnt++] = BYTE2(_temp2);
+  data_to_send[_cnt++] = BYTE1(_temp2);
+  data_to_send[_cnt++] = BYTE0(_temp2);
+
+  _temp = (int)(imu_data.yaw * 100);
+  data_to_send[_cnt++] = BYTE1(_temp);
+  data_to_send[_cnt++] = BYTE0(_temp);
+
+  _temp = (int)(loc_ctrl_1.fb[X] * 100);
+  data_to_send[_cnt++] = BYTE1(_temp);
+  data_to_send[_cnt++] = BYTE0(_temp);
+
+  _temp = (int)(loc_ctrl_1.fb[Y] * 100);
+  data_to_send[_cnt++] = BYTE1(_temp);
+  data_to_send[_cnt++] = BYTE0(_temp);
+
+  _temp = (int)(loc_ctrl_1.fb[Z] * 100);
+  data_to_send[_cnt++] = BYTE1(_temp);
+  data_to_send[_cnt++] = BYTE0(_temp);
+
+  _temp = (int)(att_1l_ct.fb_angular_velocity[YAW] * 100);
+  data_to_send[_cnt++] = BYTE1(_temp);
+  data_to_send[_cnt++] = BYTE0(_temp);
+
+  data_to_send[2] = _cnt - 3;  // calc length
+
+  u8 sum = 0;
+  for (u8 i = 0; i < _cnt; i++) sum += data_to_send[i];
+
+  data_to_send[_cnt++] = sum;  // sumcheck
+
+  ANO_User_Send_Data(data_to_send, _cnt);
 }
 
 /******************* (C) COPYRIGHT 2014 ANO TECH *****END OF FILE************/

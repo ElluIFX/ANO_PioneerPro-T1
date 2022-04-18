@@ -10,6 +10,7 @@ void FlyCtrlDataAnl(u8 *data) {
   val = ((*(data + 3)) << 8) + (*(data + 4));
   spd = ((*(data + 5)) << 8) + (*(data + 6));
   program_ctrl.cmd_state[0] = *(data + 2);
+  // DTprintf("cmd:%d,val:%d,spd:%d", program_ctrl.cmd_state[0], val, spd);
 }
 
 #include "ANO_IMU.h"
