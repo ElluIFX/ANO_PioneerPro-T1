@@ -40,13 +40,6 @@ typedef struct {
   u8 turn_left_en;
   u8 turn_right_en;
   u8 rc_lock;  //锁定遥控器
-  float hx;
-  float hy;
-  float yaw;
-  float z;
-  u8 engage_hxy;
-  u8 engage_yaw;
-  u8 engage_z;
 } _user_cntrl_word;
 
 typedef struct  //用户任务结构体

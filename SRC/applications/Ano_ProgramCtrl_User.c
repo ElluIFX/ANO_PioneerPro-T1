@@ -26,17 +26,7 @@ void user_task_point_fix(u32 dT_us) {
   Program_Ctrl_User_Set_Zcmps(0.0f);
 }
 
-void user_task_remote_ctrl(u32 dT_us) {
-  if (user_cntrl_word.engage_hxy) {
-    Program_Ctrl_User_Set_HXYcmps(user_cntrl_word.hx, user_cntrl_word.hy);
-  }
-  if (user_cntrl_word.engage_yaw) {
-    Program_Ctrl_User_Set_YAWdps(user_cntrl_word.yaw);
-  }
-  if (user_cntrl_word.engage_z) {
-    Program_Ctrl_User_Set_Zcmps(user_cntrl_word.z);
-  }
-}
+void user_task_remote_ctrl(u32 dT_us) {}
 
 void move_on(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(10, 0); }
 void move_back(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(-10, 0); }
@@ -65,14 +55,6 @@ void User_Ctrl(u32 dT_ms) {
     user_cntrl_word.break_out = 0;  //为任务的跳出做准备
     task_index = 0;
     running_time = 0;  //任务已运行时间
-
-    user_cntrl_word.engage_hxy = 0;
-    user_cntrl_word.engage_yaw = 0;
-    user_cntrl_word.engage_z = 0;
-    user_cntrl_word.hx = 0;
-    user_cntrl_word.hy = 0;
-    user_cntrl_word.yaw = 0;
-    user_cntrl_word.z = 0;
 
     for (int i = 0; i < USER_TASK_NUM; i++) {
       user_task[i].end_flag = 0;  //清空所有任务结束标志位
