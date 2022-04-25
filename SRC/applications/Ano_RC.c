@@ -455,8 +455,8 @@ void stick_function_check_longpress(u8 dT_ms, u16* time_cnt,
   }
 }
 
-_stick_f_lp_st cali_gyro, cali_acc, cali_surface;
-_stick_f_c_st cali_mag;
+_stick_f_lp_st cali_gyro, cali_acc, cali_surface, cali_mag;
+// _stick_f_c_st cali_mag;
 
 u8 stick_fun_gyrocali, stick_acccali, stick_fun_magcali;
 void stick_function(u8 dT_ms) {
@@ -481,8 +481,8 @@ void stick_function(u8 dT_ms) {
     stick_function_check_longpress(dT_ms, &cali_acc, 1000, stick_acccali, 1,
                                    &sensor.acc_CALIBRATE);
     //触发罗盘校准
-    stick_function_check(dT_ms, &cali_mag, 5, 1000, stick_fun_magcali, 1,
-                         &mag.mag_CALIBRATE);
+    stick_function_check_longpress(dT_ms, &cali_mag, 1000, stick_fun_magcali, 1,
+                                   &mag.mag_CALIBRATE);
     //		stick_function_check_longpress(dT_ms,&cali_surface,1000,stick_fun_4,1,&sensor_rot.surface_CALIBRATE
     //);
   }
