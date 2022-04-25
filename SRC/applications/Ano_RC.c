@@ -361,13 +361,13 @@ void fail_safe_check(u8 dT_ms)  // dT秒调用一次
 {
   static u16 cnt;
   static s8 cnt2;
+  cnt += dT_ms;
 
   if (skip_rc_check != 0) {  //跳过遥控检测, 单次有效以保证安全
     skip_rc_check = 0;
     return;
   }
 
-  cnt += dT_ms;
   if (cnt >= 500)  // 500*dT 秒
   {
     cnt = 0;
