@@ -283,45 +283,45 @@ void RC_duty_task(u8 dT_ms)  //建议2ms调用一次
 
 u8 shield_rc_en = 0;   //用户程序使能遥控屏蔽
 u8 skip_rc_check = 0;  //跳过接收机状态检查
+s16 CH_N_rec[CH_NUM];
 
 void shield_rc(u8 dT_ms) {
-  static s32 rec_ch_sum = 0;
-  static s32 calc_ch_sum = 0;
   static u8 shield_rc_state = 0;
 
-  u8 shield_act = CH_N[AUX3] > 0;  // 遥控使能屏蔽
-  if (shield_rc_en != 0) {         // 用户程序使能屏蔽
-    shield_act = 1;
-    shield_rc_en = 0;
-  }
+  u8 shield_rc_act = CH_N[AUX3] > 0 || shield_rc_en;  // 判断使能条件
 
   switch (shield_rc_state) {
     case 0:  // 遥控有效
-      if (shield_act) {
+      if (shield_rc_act) {
         shield_rc_state = 1;
-        rec_ch_sum = 0;
-        for (u8 i = 0; i < 4; i++) rec_ch_sum += CH_N[i];  // 记录IDLE位
+        for (u8 i = 0; i < 4; i++) CH_N_rec[i] = CH_N[i];  // 记录IDLE位
         ANO_DT_SendString("Shield RC Enable!");
       }
       break;
-    case 1:  // 屏蔽遥控
-      calc_ch_sum = 0;
-      for (u8 i = 0; i < 4; i++) calc_ch_sum += CH_N[i];
-      if (calc_ch_sum - rec_ch_sum > RELEASE_SHIELD_ACT_VAL ||
-          calc_ch_sum - rec_ch_sum <
-              -RELEASE_SHIELD_ACT_VAL) {  // 遥控动作则解除屏蔽
-        shield_rc_state = 2;
-        ANO_DT_SendString("Detected RC Action, Stop Shielding!");
-      } else {
-        for (u8 i = 0; i < 4; i++) {  // 通道值全部置0
+    case 1:                         // 屏蔽遥控
+      for (u8 i = 0; i < 4; i++) {  // 检测,如果遥控动作则解除屏蔽
+        if (CH_N_rec[i] - CH_N[i] > RELEASE_SHIELD_ACT_VAL ||
+            CH_N_rec[i] - CH_N[i] < -RELEASE_SHIELD_ACT_VAL) {
+          shield_rc_state = 2;  // 不设为0,避免再次触发
+          ANO_DT_SendString("Detected RC Action, Stop Shielding!");
+          break;
+        }
+      }
+      if (shield_rc_state == 1) {  // 开始屏蔽
+        // 通道值全部置0
+        for (u8 i = 0; i < 4; i++) {
           CH_N[i] = 0;
         }
-        skip_rc_check = 1;  //跳过遥控检测, 单次有效
+        // 跳过遥控检测, 单次有效
+        skip_rc_check = 1;
       }
-      ////////////这里没有break, 不要改动////////////////////
-    case 2:  // 解除屏蔽
-      if (!shield_act) {
+    ////////////这里没有break, 不要改动////////////////////
+    case 2:
+      if (!shield_rc_act) {  // 解除屏蔽
         shield_rc_state = 0;
+        // 清零条件
+        shield_rc_en = 0;
+        ////
         ANO_DT_SendString("Shield RC Disable!");
       }
       break;
