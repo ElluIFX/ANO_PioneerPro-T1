@@ -10,15 +10,20 @@ typedef struct  //波动次数结构体
 } _stick_f_c_st;
 
 #define _stick_f_lp_st u16  //长按
+#define RELEASE_SHIELD_ACT_VAL 100
 
 enum { CH1 = 0, CH2, CH3, CH4, CH5, CH6, CH7, CH8 };
 
 extern s16 CH_N[], RX_CH[CH_NUM];
 extern u16 signal_intensity;
 extern u8 chn_en_bit;
+extern u8 shield_rc_en;
 
 // static
+
 void fail_safe_check(u8 dT_ms);
+
+void shield_rc(u8 dT_ms);
 
 void stick_function(u8 dT_ms);
 

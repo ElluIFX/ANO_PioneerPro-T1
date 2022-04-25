@@ -122,6 +122,7 @@ static void Loop_50Hz(void)  // 20ms执行一次
   /*位置速度环控制*/
   Loc_1level_Ctrl(20, CH_N);
   /*用户控制*/
+  AnoUserCtrl_Process();
   User_Ctrl(20);  //
 }
 

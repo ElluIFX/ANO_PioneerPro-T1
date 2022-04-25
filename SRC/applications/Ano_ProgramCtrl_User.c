@@ -9,7 +9,7 @@
 #include "Drv_Led.h"
 #include "Drv_usart.h"
 
-#define USER_TASK_NUM 1  //用户任务数
+// #define USER_TASK_NUM 1  //用户任务数
 
 void UserCtrlReset(void);
 
@@ -20,23 +20,13 @@ _user_cntrl_word user_cntrl_word;  //用户控制字
 /*-----------------------------------------------------------------------------*/
 //用户任务
 
-void empty_task(u32 dT_us) {
-  Program_Ctrl_User_Set_HXYcmps(0, 0);
-  Program_Ctrl_User_Set_YAWdps(0);
-  if (user_cntrl_word.mode == 2) {
-    user_cntrl_word.land_en = 1;
-  }
-}
-
 void user_task_point_fix(u32 dT_us) {
   Program_Ctrl_User_Set_HXYcmps(0, 0);
   Program_Ctrl_User_Set_YAWdps(0);
-  if (user_cntrl_word.mode == 1) {
-    user_cntrl_word.break_out = 1;
-  }
+  Program_Ctrl_User_Set_Zcmps(0.0f);
 }
 
-void horiz_stabelize(u32 dT_us) {}
+void user_task_remote_ctrl(u32 dT_us) {}
 
 void move_on(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(10, 0); }
 void move_back(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(-10, 0); }
@@ -45,36 +35,19 @@ void move_right(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(0, -10); }
 void turn_left(u32 dT_us) { Program_Ctrl_User_Set_YAWdps(-15 / 2.0f); }
 void turn_right(u32 dT_us) { Program_Ctrl_User_Set_YAWdps(45 / 2.0f); }
 
-void user_task_2(u32 dT_us) {}
-
-void user_task_to_barcode(u32 dT_us) {}
-
-void user_task_to_pole(u32 dT_us) {}
-
-void user_task_take_photo(u32 dT_us) {}
-
-void user_task_5(u32 dT_us) {
-  if (user_cntrl_word.mode == 3) {
-    Program_Ctrl_User_Set_HXYcmps(-10, 0);
-  } else {
-    user_cntrl_word.break_out = 1;
-  }
-}
-
 /*------------------------------------------------------------------------------*/
-static user_task_t
-    user_task[USER_TASK_NUM] =  //用户任务列表（一键起飞后自动进行）
+static user_task_t user_task[] =  //用户任务列表（一键起飞后自动进行）
     {
-        {empty_task, 8000, 0, 0},  //
+        {user_task_point_fix, 5000, 0, 0},
+        {user_task_remote_ctrl, 1800000, 0, 0},
 };
-
+const u8 USER_TASK_NUM = sizeof(user_task) / sizeof(user_task_t);
 //顺序执行用户任务
 static u8 task_index = 0;     //用于记录正在执行的任务
 static u32 running_time = 0;  //任务已运行时间
 
 void User_Ctrl(u32 dT_ms) {
   if (user_cntrl_word.takeoff_en == 1 && switchs.of_flow_on) {
-    //		printf("take off\r\n");
     FlyCtrlReset();
     one_key_take_off();
     user_cntrl_word.takeoff_en = 0;
@@ -91,9 +64,10 @@ void User_Ctrl(u32 dT_ms) {
     UserCtrlReset();
     one_key_land();
     user_cntrl_word.land_en = 0;
-  }
-  // else if(flag.flying==1&&user_cntrl_word.user_task_running)
-  else if (user_cntrl_word.user_task_running) {
+    user_cntrl_word.user_task_running = 0;  //终止任务
+  } else if (flag.auto_take_off_land == AUTO_TAKE_OFF_FINISH &&
+             user_cntrl_word.user_task_running) {
+    // else if (user_cntrl_word.user_task_running) {
     if (task_index < USER_TASK_NUM) {
       if (user_task[task_index].start_flag == 1)  //执行第task_index个任务
       {
@@ -103,6 +77,7 @@ void User_Ctrl(u32 dT_ms) {
 
       if (user_task[task_index].end_flag == 1)  //准备开始下一个任务
       {
+        DTprintf(" > Task %d END", task_index);
         task_index++;
         running_time = 0;
         FlyCtrlReset();
@@ -120,8 +95,6 @@ void User_Ctrl(u32 dT_ms) {
       if (running_time == 0)  //启动第task_index个任务
       {
         user_task[task_index].start_flag = 1;
-        //							 printf("user
-        // task<%d> start!\r\n",task_index);
       } else if (running_time >=
                  user_task[task_index].run_time)  //判断当前任务是否完成
       {
@@ -129,13 +102,13 @@ void User_Ctrl(u32 dT_ms) {
         user_task[task_index].end_flag = 1;
       }
     } else {
+      ANO_DT_SendString(" > All task finished!");
       user_cntrl_word.land_en = 1;
       user_cntrl_word.user_task_running = 0;
       UserCtrlReset();
       FlyCtrlReset();
       task_index = 0;
       running_time = 0;
-      //			printf("UserCtrlReset\r\n");
     }
   }
 }
@@ -190,8 +163,139 @@ void Program_Ctrl_User_Set_YAWdps(float yaw_pal_dps) {
       LIMIT(pc_user.pal_dps_set, -MAX_PC_PAL_DPS, MAX_PC_PAL_DPS);
 }
 
+/**********************************************************************************************************
+ *函 数 名: Program_Ctrl_User_Set_ZHeight
+ *功能说明: 程控功能，定高高度设定
+ *形    参: 高度（厘米）
+ *返 回 值: 无
+ **********************************************************************************************************/
+void Program_Ctrl_User_Set_ZHeight(float z_height) {
+  //
+  pc_user.height_set = z_height;
+  //限幅
+  pc_user.height_set = LIMIT(pc_user.height_set, 40, MAX_PC_HEIGHT);
+  pc_user.engage_height_set = 1;
+}
+
 void UserCtrlReset() {
   Program_Ctrl_User_Set_HXYcmps(0, 0);
   Program_Ctrl_User_Set_YAWdps(0);
   Program_Ctrl_User_Set_Zcmps(0);
+}
+
+static uint8_t _user_data_temp[50];
+static u8 _user_data_cnt = 0;
+static u8 user_ctrl_data_ok = 0;
+
+/**
+ * @brief 外部MCU用户控制命令接收函数,在串口中断中调用
+ * @param  data
+ */
+void AnoUserCtrl_GetOneByte(uint8_t data) {
+  static u8 _data_len = 0;
+  static u8 state = 0;
+
+  if (state == 0 && data == 0xAA) {
+    state = 1;
+    _user_data_temp[0] = data;
+  } else if (state == 1 && data == 0x22) {
+    state = 2;
+    _user_data_temp[1] = data;
+    user_ctrl_data_ok = 0;
+  } else if (state == 2)  //功能字
+  {
+    state = 3;
+    _user_data_temp[2] = data;
+  } else if (state == 3)  //长度
+  {
+    state = 4;
+    _user_data_temp[3] = data;
+    _data_len = data;  //数据长度
+    _user_data_cnt = 0;
+    // if (_data_len == 1) state = 5;
+  } else if (state == 4 && _data_len > 0) {
+    _data_len--;
+    _user_data_temp[4 + _user_data_cnt++] = data;  //数据
+    if (_data_len == 0) state = 5;
+  } else if (state == 5) {
+    state = 0;
+    _user_data_temp[4 + _user_data_cnt] = data;  // check sum
+    _user_data_temp[5 + _user_data_cnt] = 0;
+    user_ctrl_data_ok = 1;
+  } else
+    state = 0;
+}
+
+extern u8 send_user_data_flag;
+
+void AnoUserCtrl_Process(void) {
+  static u8 option;
+  static u8 sub_option;
+  static u8 recv_check;
+  static u8 calc_check;
+  static u8 len;
+  static u8 connected = 0;
+  static uint8_t* p_data = (uint8_t*)(_user_data_temp + 4);
+  static float val1, val2, val3;
+  static int16_t temp_s16;
+  if (user_ctrl_data_ok) {
+    user_ctrl_data_ok = 0;
+    option = _user_data_temp[2];
+    len = _user_data_temp[3];
+    recv_check = _user_data_temp[4 + len];
+    calc_check = 0;
+    for (u8 i = 0; i < len + 4; i++) {
+      calc_check += _user_data_temp[i];
+    }
+    // DTprintf("R: option:%d,len:%d,unicode:%s", option, len, p_data);
+    if (calc_check != recv_check) {
+      DTprintf("R: checksum error");
+      return;
+    }
+    switch (option) {
+      case 0x00:  // 握手
+        if (p_data[0] == 0x01) {
+          connected = 1;
+          send_user_data_flag = 1;
+          DTprintf("Ctrl Connected");
+          break;
+        }
+      case 0x01:  // 流程控制
+        if (p_data[0] == 0x10) {
+          FlyCtrlDataAnl(p_data);
+        }
+        break;
+      case 0x02:  // 实时控制
+        sub_option = p_data[0];
+        temp_s16 = p_data[1] << 8 | p_data[2];
+        val1 = temp_s16 / 100.0f;
+        temp_s16 = p_data[3] << 8 | p_data[4];
+        val2 = temp_s16 / 100.0f;
+        // DTprintf("R: sub_option:%d,val1:%f,val2:%f", sub_option, val1, val2);
+        switch (sub_option) {
+          case 0x01:
+            Program_Ctrl_User_Set_HXYcmps(val1, val2);
+            break;
+          case 0x02:
+            Program_Ctrl_User_Set_Zcmps(val1);
+            break;
+          case 0x03:
+            Program_Ctrl_User_Set_YAWdps(val1);
+            break;
+          case 0x04:
+            Program_Ctrl_User_Set_ZHeight(val1);
+            break;
+          case 0x05:
+            Program_Ctrl_User_Set_HXYcmps(0, 0);
+            Program_Ctrl_User_Set_Zcmps(0);
+            Program_Ctrl_User_Set_YAWdps(0);
+            break;
+          default:
+            break;
+        }
+        break;
+      default:
+        break;
+    }
+  }
 }

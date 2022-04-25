@@ -101,19 +101,9 @@ void unlock(u8 dT_ms) {
         ANO_DT_SendString("Unlock OK!");
 
       } else {
+        DTprintf("Unlock ERR:%d", flag.unlock_err);
         // reset
         flag.unlock_cmd = 0;
-        //
-        if (flag.unlock_err == 1) {
-          ANO_DT_SendString("Unlock Fail!");
-        } else if (flag.unlock_err == 2) {
-          ANO_DT_SendString("Unlock Fail!");
-        } else if (flag.unlock_err == 3) {
-          ANO_DT_SendString("Unlock Fail!");
-        } else if (flag.unlock_err == 4) {
-          ANO_DT_SendString("Power Low,Unlock Fail!");
-        } else {
-        }
       }
     } else {
     }
@@ -176,50 +166,56 @@ void unlock(u8 dT_ms) {
     flag.thr_low = 1;  //油门拉低
   }
 
-  /*用户添加*/
-  static u32 time_now = 0;
-  static u32 time_pre;
-  static u32 time_err = 1000;
-  static u8 AUX2_Toggle, mode_temp = 0, mode_temp_pre;
-
-  time_now = SysTick_GetTick();
-  if (CH_N[AUX2] > 0 && AUX2_Toggle) {
-    AUX2_Toggle = 0;
-    mode_temp++;
-    time_pre = time_now;
-  } else if (CH_N[AUX2] < 0) {
-    AUX2_Toggle = 1;
-    if (time_now - time_pre > time_err) {
-      mode_temp = 0;
-      // flag.user_mode=0;
-    }
-  } else {  //
+  if (CH_N[AUX4] > 0) {
+    flag.unlock_cmd = 0;  // 紧急锁浆
   }
 
-  if (mode_temp != mode_temp_pre && CH_N[AUX2] < 0) {
-    flag.user_mode = mode_temp_pre;
-    // printf("%d\r\n",flag.user_mode);
-    switch (flag.user_mode) {
-      case 1:
-        user_cntrl_word.takeoff_en = 1;
-        //	printf("takeoffen\r\n");
-        break;
-      case 2:
-        user_cntrl_word.land_en = 1;
-        break;
-      case 3:
-        user_cntrl_word.turn_left_en = 1;
-        //			printf("%d\r\n",flag.user_mode);
-        break;
-      case 4:
-        user_cntrl_word.turn_right_en = 1;
-        break;
-      default:
-        break;
-    }
-  }
-
-  mode_temp_pre = mode_temp;
+  //   static u32 time_now = 0;
+  //   static u32 time_pre;
+  //   static u32 time_err = 1000;
+  //   static u8 AUX2_Toggle, mode_temp = 0, mode_temp_pre;
+  //
+  //   time_now = SysTick_GetTick();
+  //
+  //
+  //   if (CH_N[AUX2] > 0 && AUX2_Toggle) {
+  //     AUX2_Toggle = 0;
+  //     mode_temp++;
+  //     time_pre = time_now;
+  //   } else if (CH_N[AUX2] < 0) {
+  //     AUX2_Toggle = 1;
+  //     if (time_now - time_pre > time_err) {
+  //       mode_temp = 0;
+  //       // flag.user_mode=0;
+  //     }
+  //   } else {  //
+  //   }
+  //
+  //   if (mode_temp != mode_temp_pre && CH_N[AUX2] < 0) {
+  //     flag.user_mode = mode_temp_pre;
+  //     DTprintf("user_mode=%d", flag.user_mode);
+  //     switch (flag.user_mode) {
+  //       case 1:
+  //         user_cntrl_word.takeoff_en = 1;
+  //         ANO_DT_SendString("takeoffen");
+  //         break;
+  //       case 2:
+  //         user_cntrl_word.land_en = 1;
+  //         ANO_DT_SendString("landen");
+  //         break;
+  //       case 3:
+  //         user_cntrl_word.turn_left_en = 1;
+  //         ANO_DT_SendString("turn_left_en");
+  //         break;
+  //       case 4:
+  //         user_cntrl_word.turn_right_en = 1;
+  //         ANO_DT_SendString("turn_right_en");
+  //         break;
+  //       default:
+  //         break;
+  //     }
+  //   }
+  //   mode_temp_pre = mode_temp;
 }
 
 void RC_duty_task(u8 dT_ms)  //建议2ms调用一次
@@ -271,6 +267,8 @@ void RC_duty_task(u8 dT_ms)  //建议2ms调用一次
     }
 
     ///////////////////////////////////////////////
+    //遥控屏蔽
+    shield_rc(dT_ms);
     //解锁监测
     unlock(dT_ms);
     //摇杆触发功能监测
@@ -280,6 +278,55 @@ void RC_duty_task(u8 dT_ms)  //建议2ms调用一次
 
     //失控保护检查
     fail_safe_check(dT_ms);  // 3ms
+  }
+}
+
+u8 shield_rc_en = 0;   //用户程序使能遥控屏蔽
+u8 skip_rc_check = 0;  //跳过接收机状态检查
+
+void shield_rc(u8 dT_ms) {
+  static s32 rec_ch_sum = 0;
+  static s32 calc_ch_sum = 0;
+  static u8 shield_rc_state = 0;
+
+  u8 shield_act = CH_N[AUX3] > 0;  // 遥控使能屏蔽
+  if (shield_rc_en != 0) {         // 用户程序使能屏蔽
+    shield_act = 1;
+    shield_rc_en = 0;
+  }
+
+  switch (shield_rc_state) {
+    case 0:  // 遥控有效
+      if (shield_act) {
+        shield_rc_state = 1;
+        rec_ch_sum = 0;
+        for (u8 i = 0; i < 4; i++) rec_ch_sum += CH_N[i];  // 记录IDLE位
+        ANO_DT_SendString("Shield RC Enable!");
+      }
+      break;
+    case 1:  // 屏蔽遥控
+      calc_ch_sum = 0;
+      for (u8 i = 0; i < 4; i++) calc_ch_sum += CH_N[i];
+      if (calc_ch_sum - rec_ch_sum > RELEASE_SHIELD_ACT_VAL ||
+          calc_ch_sum - rec_ch_sum <
+              -RELEASE_SHIELD_ACT_VAL) {  // 遥控动作则解除屏蔽
+        shield_rc_state = 2;
+        ANO_DT_SendString("Detected RC Action, Stop Shielding!");
+      } else {
+        for (u8 i = 0; i < 4; i++) {  // 通道值全部置0
+          CH_N[i] = 0;
+        }
+        skip_rc_check = 1;  //跳过遥控检测, 单次有效
+      }
+      ////////////这里没有break, 不要改动////////////////////
+    case 2:  // 解除屏蔽
+      if (!shield_act) {
+        shield_rc_state = 0;
+        ANO_DT_SendString("Shield RC Disable!");
+      }
+      break;
+    default:
+      shield_rc_state = 0;
   }
 }
 
@@ -314,6 +361,11 @@ void fail_safe_check(u8 dT_ms)  // dT秒调用一次
 {
   static u16 cnt;
   static s8 cnt2;
+
+  if (skip_rc_check != 0) {  //跳过遥控检测, 单次有效以保证安全
+    skip_rc_check = 0;
+    return;
+  }
 
   cnt += dT_ms;
   if (cnt >= 500)  // 500*dT 秒
@@ -354,8 +406,8 @@ void fail_safe_check(u8 dT_ms)  // dT秒调用一次
   }
 }
 
-void stick_function_check(u8 dT_ms, _stick_f_c_st *sv, u8 times_n,
-                          u16 reset_time_ms, u8 en, u8 trig_val, u8 *trig) {
+void stick_function_check(u8 dT_ms, _stick_f_c_st* sv, u8 times_n,
+                          u16 reset_time_ms, u8 en, u8 trig_val, u8* trig) {
   if (en) {
     sv->s_cnt = 0;  //清除计时
     if (sv->s_state == 0) {
@@ -378,9 +430,9 @@ void stick_function_check(u8 dT_ms, _stick_f_c_st *sv, u8 times_n,
     sv->s_now_times = 0;
   }
 }
-void stick_function_check_longpress(u8 dT_ms, u16 *time_cnt,
+void stick_function_check_longpress(u8 dT_ms, u16* time_cnt,
                                     u16 longpress_time_ms, u8 en, u8 trig_val,
-                                    u8 *trig) {
+                                    u8* trig) {
   // dT_ms：调用间隔时间
   // time_cnt：积分时间
   // longpress_time_ms：阈值时间，超过这个时间则为满足条件
