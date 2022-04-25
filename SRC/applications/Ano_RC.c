@@ -281,12 +281,20 @@ void RC_duty_task(u8 dT_ms)  //建议2ms调用一次
   }
 }
 
-u8 shield_rc_state = 0;
+u8 shield_rc_en = 0;   //用户程序使能遥控屏蔽
+u8 skip_rc_check = 0;  //跳过接收机状态检查
 
 void shield_rc(u8 dT_ms) {
   static s32 rec_ch_sum = 0;
   static s32 calc_ch_sum = 0;
-  u8 shield_act = CH_N[AUX3] > 0;  // 屏蔽作动通道
+  static u8 shield_rc_state = 0;
+
+  u8 shield_act = CH_N[AUX3] > 0;  // 遥控使能屏蔽
+  if (shield_rc_en != 0) {         // 用户程序使能屏蔽
+    shield_act = 1;
+    shield_rc_en = 0;
+  }
+
   switch (shield_rc_state) {
     case 0:  // 遥控有效
       if (shield_act) {
@@ -308,6 +316,7 @@ void shield_rc(u8 dT_ms) {
         for (u8 i = 0; i < 4; i++) {  // 通道值全部置0
           CH_N[i] = 0;
         }
+        skip_rc_check = 1;  //跳过遥控检测, 单次有效
       }
     case 2:  // 解除屏蔽
       if (!shield_act) {
@@ -351,6 +360,11 @@ void fail_safe_check(u8 dT_ms)  // dT秒调用一次
 {
   static u16 cnt;
   static s8 cnt2;
+
+  if (skip_rc_check != 0) {  //跳过遥控检测, 单次有效以保证安全
+    skip_rc_check = 0;
+    return;
+  }
 
   cnt += dT_ms;
   if (cnt >= 500)  // 500*dT 秒
