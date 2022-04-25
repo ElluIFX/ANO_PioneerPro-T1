@@ -17,7 +17,7 @@ enum { CH1 = 0, CH2, CH3, CH4, CH5, CH6, CH7, CH8 };
 extern s16 CH_N[], RX_CH[CH_NUM];
 extern u16 signal_intensity;
 extern u8 chn_en_bit;
-extern u8 shield_rc_state;
+extern u8 shield_rc_en;
 
 // static
 
