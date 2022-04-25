@@ -173,7 +173,7 @@ void Program_Ctrl_User_Set_ZHeight(float z_height) {
   //
   pc_user.height_set = z_height;
   //оч╥Ы
-  pc_user.height_set = LIMIT(pc_user.height_set, 10, MAX_PC_HEIGHT);
+  pc_user.height_set = LIMIT(pc_user.height_set, 40, MAX_PC_HEIGHT);
   pc_user.engage_height_set = 1;
 }
 
