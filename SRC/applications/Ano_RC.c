@@ -458,7 +458,7 @@ void stick_function_check_longpress(u8 dT_ms, u16* time_cnt,
 _stick_f_lp_st cali_gyro, cali_acc, cali_surface;
 _stick_f_c_st cali_mag;
 
-u8 stick_fun_1, stick_fun_2, stick_fun_3, stick_fun_4, stick_fun_5_magcali;
+u8 stick_fun_gyrocali, stick_acccali, stick_fun_magcali;
 void stick_function(u8 dT_ms) {
   //////////////状态监测
   //未解锁才允许检测摇杆功能
@@ -467,44 +467,24 @@ void stick_function(u8 dT_ms) {
     if (flag.thr_low) {
       if (CH_N[CH_PIT] < -350 && CH_N[CH_ROL] > 350 && CH_N[CH_THR] < -350 &&
           CH_N[CH_YAW] > 350) {
-        stick_fun_1 = stick_fun_2 = 1;
+        stick_fun_gyrocali = stick_acccali = stick_fun_magcali = 1;
       } else {
-        stick_fun_1 = stick_fun_2 = 0;
-      }
-
-      if (CH_N[CH_PIT] > 350 && CH_N[CH_ROL] > 350 && CH_N[CH_THR] < -350 &&
-          CH_N[CH_YAW] < -350) {
-        stick_fun_3 = 1;
-      } else {
-        stick_fun_3 = 0;
-      }
-
-      if (CH_N[CH_PIT] > 350 && CH_N[CH_ROL] > 350 && CH_N[CH_THR] < -350 &&
-          CH_N[CH_YAW] > 350) {
-        stick_fun_4 = 1;
-      } else {
-        stick_fun_4 = 0;
-      }
-
-      if (CH_N[CH_PIT] > 350) {
-        stick_fun_5_magcali = 1;
-      } else if (CH_N[CH_PIT] < 50) {
-        stick_fun_5_magcali = 0;
+        stick_fun_gyrocali = stick_acccali = stick_fun_magcali = 0;
       }
     }
 
     ///////////////
     //触发陀螺仪校准
-    stick_function_check_longpress(dT_ms, &cali_gyro, 1000, stick_fun_1, 1,
-                                   &sensor.gyr_CALIBRATE);
+    stick_function_check_longpress(dT_ms, &cali_gyro, 1000, stick_fun_gyrocali,
+                                   1, &sensor.gyr_CALIBRATE);
     //触发加速度计校准
-    stick_function_check_longpress(dT_ms, &cali_acc, 1000, stick_fun_2, 1,
+    stick_function_check_longpress(dT_ms, &cali_acc, 1000, stick_acccali, 1,
                                    &sensor.acc_CALIBRATE);
-
-    //		stick_function_check_longpress(dT_ms,&cali_surface,1000,stick_fun_4,1,&sensor_rot.surface_CALIBRATE
-    //); 触发罗盘校准
-    stick_function_check(dT_ms, &cali_mag, 5, 1000, stick_fun_5_magcali, 1,
+    //触发罗盘校准
+    stick_function_check(dT_ms, &cali_mag, 5, 1000, stick_fun_magcali, 1,
                          &mag.mag_CALIBRATE);
+    //		stick_function_check_longpress(dT_ms,&cali_surface,1000,stick_fun_4,1,&sensor_rot.surface_CALIBRATE
+    //);
   }
 
   //////////////
