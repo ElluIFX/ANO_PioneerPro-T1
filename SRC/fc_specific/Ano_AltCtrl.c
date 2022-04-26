@@ -108,8 +108,10 @@ void Alt_2level_Ctrl(float dT_s) {
   if (fs.alt_ctrl_speed_set != 0) {
     flag.ct_alt_hold = 0;
   } else {
-    if (ABS(loc_ctrl_1.exp[Z] - loc_ctrl_1.fb[Z]) < 20) {
+    if (ABS(loc_ctrl_1.exp[Z] - loc_ctrl_1.fb[Z]) < 10) {
       flag.ct_alt_hold = 1;
+    } else {
+      flag.ct_alt_hold = 0;
     }
   }
 

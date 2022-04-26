@@ -6,6 +6,7 @@
  **********************************************************************************/
 #include "Ano_RC.h"
 
+#include "Ano_FlyCtrl.h"
 #include "Ano_MagProcess.h"
 #include "Ano_Math.h"
 #include "Ano_ProgramCtrl_User.h"
@@ -283,10 +284,10 @@ void RC_duty_task(u8 dT_ms)  //建议2ms调用一次
 
 u8 shield_rc_en = 0;   //用户程序使能遥控屏蔽
 u8 skip_rc_check = 0;  //跳过接收机状态检查
+u8 shield_rc_state = 0;
 s16 CH_N_rec[CH_NUM];
 
 void shield_rc(u8 dT_ms) {
-  static u8 shield_rc_state = 0;
   static u8 thr_low_safe = 0;
 
   u8 shield_rc_act = CH_N[AUX3] > 0 || shield_rc_en;  // 判断使能条件
@@ -307,6 +308,7 @@ void shield_rc(u8 dT_ms) {
             CH_N_rec[i] - CH_N[i] < -RELEASE_SHIELD_ACT_VAL) {
           shield_rc_state = 2;  // 不设为0,避免再次触发
           thr_low_safe = 1;
+          program_ctrl.cmd_state[0] = 0;
           Program_Ctrl_User_Set_HXYcmps(0, 0);
           Program_Ctrl_User_Set_Zcmps(0);
           Program_Ctrl_User_Set_YAWdps(0);

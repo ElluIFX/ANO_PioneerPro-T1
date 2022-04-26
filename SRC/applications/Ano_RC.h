@@ -18,6 +18,7 @@ extern s16 CH_N[], RX_CH[CH_NUM];
 extern u16 signal_intensity;
 extern u8 chn_en_bit;
 extern u8 shield_rc_en;
+extern u8 shield_rc_state;
 
 // static
 

@@ -280,9 +280,7 @@ void AnoUserCtrl_Process(void) {
             Program_Ctrl_User_Set_ZHeight(val1);
             break;
           case 0x05:
-            Program_Ctrl_User_Set_HXYcmps(0, 0);
-            Program_Ctrl_User_Set_Zcmps(0);
-            Program_Ctrl_User_Set_YAWdps(0);
+            UserCtrlReset();
             break;
           default:
             break;
