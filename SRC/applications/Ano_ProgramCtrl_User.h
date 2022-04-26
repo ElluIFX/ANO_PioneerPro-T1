@@ -13,6 +13,7 @@
 void Program_Ctrl_User_Set_HXYcmps(float hx_vel_cmps, float hy_vel_cmps);
 void Program_Ctrl_User_Set_YAWdps(float yaw_pal_dps);
 void Program_Ctrl_User_Set_Zcmps(float z_vel_cmps);
+void Program_Ctrl_User_Set_ZHeight(float height);
 
 void User_Ctrl(u32 dT_ms);  //
 

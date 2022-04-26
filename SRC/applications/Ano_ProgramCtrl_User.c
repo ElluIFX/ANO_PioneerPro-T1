@@ -28,12 +28,6 @@ void user_task_point_fix(u32 dT_us) {
 
 void user_task_remote_ctrl(u32 dT_us) {}
 
-void move_on(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(10, 0); }
-void move_back(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(-10, 0); }
-void move_left(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(0, 10); }
-void move_right(u32 dT_us) { Program_Ctrl_User_Set_HXYcmps(0, -10); }
-void turn_left(u32 dT_us) { Program_Ctrl_User_Set_YAWdps(-15 / 2.0f); }
-void turn_right(u32 dT_us) { Program_Ctrl_User_Set_YAWdps(45 / 2.0f); }
 
 /*------------------------------------------------------------------------------*/
 static user_task_t user_task[] =  //用户任务列表（一键起飞后自动进行）
