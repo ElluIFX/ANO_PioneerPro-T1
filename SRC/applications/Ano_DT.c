@@ -1060,8 +1060,9 @@ void ANO_User_Recall_Data(void) {
   vs16 _temp;
   vs32 _temp2;
 
-  //  解锁状态, 起飞状态, 高度稳定, 高度,
+  // 解锁状态, 起飞状态, 高度稳定, 高度,
   // 航向, x速度, y速度, z速度, 角速度
+  // 电压, 遥控锁定状态, 程控状态
 
   data_to_send[_cnt++] = 0xAA;  // head
   data_to_send[_cnt++] = 0x55;  // head
@@ -1096,6 +1097,13 @@ void ANO_User_Recall_Data(void) {
   _temp = (int)(att_1l_ct.fb_angular_velocity[YAW] * 100);
   data_to_send[_cnt++] = BYTE1(_temp);
   data_to_send[_cnt++] = BYTE0(_temp);
+
+  _temp = (int)(Plane_Votage * 100);
+  data_to_send[_cnt++] = BYTE1(_temp);
+  data_to_send[_cnt++] = BYTE0(_temp);
+
+  data_to_send[_cnt++] = shield_rc_state;
+  data_to_send[_cnt++] = program_ctrl.cmd_state[0];
 
   data_to_send[2] = _cnt - 3;  // calc length
 
