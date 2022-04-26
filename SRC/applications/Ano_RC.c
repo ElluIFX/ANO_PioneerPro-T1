@@ -287,6 +287,7 @@ s16 CH_N_rec[CH_NUM];
 
 void shield_rc(u8 dT_ms) {
   static u8 shield_rc_state = 0;
+  static u8 thr_low_safe = 0;
 
   u8 shield_rc_act = CH_N[AUX3] > 0 || shield_rc_en;  // 判断使能条件
 
@@ -305,6 +306,10 @@ void shield_rc(u8 dT_ms) {
         if (CH_N_rec[i] - CH_N[i] > RELEASE_SHIELD_ACT_VAL ||
             CH_N_rec[i] - CH_N[i] < -RELEASE_SHIELD_ACT_VAL) {
           shield_rc_state = 2;  // 不设为0,避免再次触发
+          thr_low_safe = 1;
+          Program_Ctrl_User_Set_HXYcmps(0, 0);
+          Program_Ctrl_User_Set_Zcmps(0);
+          Program_Ctrl_User_Set_YAWdps(0);
           ANO_DT_SendString("Detected RC Action, Stop Shielding!");
           break;
         }
@@ -319,6 +324,11 @@ void shield_rc(u8 dT_ms) {
       }
     ////////////这里没有break, 不要改动////////////////////
     case 2:
+
+      if (thr_low_safe && CH_N[CH_THR] < -100)  // 防止摔机
+        CH_N[CH_THR] = -100;
+      else
+        thr_low_safe = 0;
       if (!shield_rc_act) {  // 解除屏蔽
         shield_rc_state = 0;
         // 清零条件

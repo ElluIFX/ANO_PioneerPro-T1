@@ -335,7 +335,7 @@ void Swtich_State_Task(u8 dT_ms) {
   }
 }
 
-static void Speed_Mode_Switch() {
+// static void Speed_Mode_Switch() {
   //	if( ubx_user_data.s_acc_cms > 60)// || ubx_user_data.svs_used < 6)
   //	{
   //		flag.speed_mode = 0;
@@ -344,12 +344,12 @@ static void Speed_Mode_Switch() {
   //	{
   //		flag.speed_mode = 1;
   //	}
-}
+// }
 
 u8 speed_mode_old = 255;
 u8 flight_mode_old = 255;
 void Flight_Mode_Set(u8 dT_ms) {
-  Speed_Mode_Switch();
+  // Speed_Mode_Switch();
 
   if (speed_mode_old != flag.speed_mode)  //×´Ì¬¸Ä±ä
   {
