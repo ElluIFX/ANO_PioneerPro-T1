@@ -10,7 +10,7 @@ typedef struct  //波动次数结构体
 } _stick_f_c_st;
 
 #define _stick_f_lp_st u16  //长按
-#define RELEASE_SHIELD_ACT_VAL 100
+#define RELEASE_SHIELD_ACT_VAL 200
 
 enum { CH1 = 0, CH2, CH3, CH4, CH5, CH6, CH7, CH8 };
 

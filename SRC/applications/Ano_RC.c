@@ -300,6 +300,8 @@ void shield_rc(u8 dT_ms) {
       break;
     case 1:                         // 屏蔽遥控
       for (u8 i = 0; i < 4; i++) {  // 检测,如果遥控动作则解除屏蔽
+        if (CH_N[CH_THR] == -470)
+          CH_N[CH_THR] = CH_N_rec[CH_THR];  // 忽略接收机失能信号
         if (CH_N_rec[i] - CH_N[i] > RELEASE_SHIELD_ACT_VAL ||
             CH_N_rec[i] - CH_N[i] < -RELEASE_SHIELD_ACT_VAL) {
           shield_rc_state = 2;  // 不设为0,避免再次触发
